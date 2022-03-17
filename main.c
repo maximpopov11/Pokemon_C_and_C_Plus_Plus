@@ -20,6 +20,7 @@
 //77 = minimum number of paths in tile - 1 for PC so all trainers can be placed
 #define MAX_NUM_TRAINERS 77
 
+//Author Maxim Popov
 enum character_type {
     PLAYER,
     RIVAL,

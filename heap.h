@@ -7,6 +7,7 @@ extern "C" {
 
 # include <stdint.h>
 
+//Authored by Professor Jeremy Sheaffer
 struct heap_node;
 typedef struct heap_node heap_node_t;
 
