@@ -162,6 +162,10 @@ int main(int argc, char *argv[]) {
 
     //run program
     initscr();
+    //todo: DELETE: tests printing
+    addstr("test\n");
+    //todo: DELETE: tests reading
+    addch(getch());
     srand(time(NULL));
     struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X] = {0};
     struct heap turn_heap;
@@ -171,7 +175,6 @@ int main(int argc, char *argv[]) {
     print_tile_terrain(&home_tile);
     turn_based_movement(&home_tile, &turn_heap);
     endwin();
-
     return 0;
 
 }
