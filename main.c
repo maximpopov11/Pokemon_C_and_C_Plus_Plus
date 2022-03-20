@@ -6,6 +6,7 @@
 #include <math.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <ncurses.h>
 #include "heap.h"
 
 #define TILE_WIDTH_X 80
@@ -106,7 +107,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap);
 int move_character(struct tile *tile, int x, int y, int new_x, int new_y);
 int teleport_player_character(struct tile *tile);
 int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *turn_heap, int num_trainers);
-int move(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], int x, int y, struct heap *turn_heap, int num_trainers);
+int change_tile(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], int x, int y, struct heap *turn_heap, int num_trainers);
 struct tile create_tile(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], int x, int y, struct heap *turn_heap,
         int num_trainers);
 struct tile create_empty_tile();
@@ -137,8 +138,8 @@ int main(int argc, char *argv[]) {
     int opt= 0;
     int numtrainers = 10;
     static struct option long_options[] = {
-            {"numtrainers",      required_argument,       0,  't' },
-            {0,           0,                 0,  0   }
+            {"numtrainers", required_argument,0,'t' },
+            {0,0,0,0   }
     };
     int long_index =0;
     while ((opt = getopt_long(argc, argv,"t:", long_options, &long_index )) != -1) {
@@ -160,6 +161,7 @@ int main(int argc, char *argv[]) {
     }
 
     //run program
+    initscr();
     srand(time(NULL));
     struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X] = {0};
     struct heap turn_heap;
@@ -168,10 +170,7 @@ int main(int argc, char *argv[]) {
     world[WORLD_CENTER_Y][WORLD_CENTER_X] = &home_tile;
     print_tile_terrain(&home_tile);
     turn_based_movement(&home_tile, &turn_heap);
-
-//    if (interaction(world, numtrainers) == 1) {
-//        printf("No memory for command input\n");
-//    }
+    endwin();
 
     return 0;
 
@@ -187,7 +186,7 @@ int print_usage() {
 
 int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
 
-    //todo: QOL: remove duplicate code between Rival/Hiker, has direction can move, Random Walker/Wanderer/Pacer, etc.
+    //todo: QOL: remove duplicate code between Rival/Hiker, has direction can change_tile, Random Walker/Wanderer/Pacer, etc.
 
     static struct character *character;
     while ((character = heap_remove_min(turn_heap))) {
@@ -196,7 +195,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
             character->turn += MINIMUM_TURN;
         }
         else if (character->type == RIVAL) {
-            //find a legal point to move to
+            //find a legal point to change_tile to
             int new_x;
             int new_y;
             int new_distance = INT_MAX;
@@ -217,12 +216,12 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 }
             }
             if (new_distance != INT_MAX) {
-                //if legal point to move to found, move there
+                //if legal point to move to found, change_tile there
                 move_character(tile, character->x, character->y, new_x, new_y);
                 character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
             }
             else {
-                //no legal point to move to found
+                //no legal point to change_tile to found
                 character->turn += MINIMUM_TURN;
             }
         }
@@ -309,7 +308,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
         else if (character->type == PACER) {
             int new_x = character->x + character->x_direction;
             int new_y = character->y + character->y_direction;
-            //move in direction
+            //change_tile in direction
             if (character->direction_set == 1 && new_x > 0 && new_x < TILE_WIDTH_X && new_y > 0 && new_y < TILE_LENGTH_Y
                 && tile->tile[new_y][new_x].terrain.rival_weight != INT_MAX
                 && (tile->tile[new_y][new_x].character == NULL || tile->tile[new_y][new_x].character->type == PLAYER)) {
@@ -493,7 +492,7 @@ int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *
             printf("Fly: \"f x-coordinate y-coordinate\"\n");
             printf("Quit: \"q\"\n");
         } else if (strcmp(command, "n") == 0) {
-            if (move(world, x, y - 1, turn_heap, num_trainers) == 0) {
+            if (change_tile(world, x, y - 1, turn_heap, num_trainers) == 0) {
                 y--;
                 printf("Moved North to the tile at coordinates (%d, %d)!\n", x - WORLD_CENTER_X, y - WORLD_CENTER_Y);
             }
@@ -502,7 +501,7 @@ int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *
                 printf("You are already at the Northernmost tile!\n");
             }
         } else if (strcmp(command, "s") == 0) {
-            if (move(world, x, y + 1, turn_heap, num_trainers) == 0) {
+            if (change_tile(world, x, y + 1, turn_heap, num_trainers) == 0) {
                 y++;
                 printf("Moved South to the tile at coordinates (%d, %d)!\n", x - WORLD_CENTER_X, y - WORLD_CENTER_Y);
             }
@@ -511,7 +510,7 @@ int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *
                 printf("You are already at the Southernmost tile!\n");
             }
         } else if (strcmp(command, "e") == 0) {
-            if (move(world, x + 1, y, turn_heap, num_trainers) == 0) {
+            if (change_tile(world, x + 1, y, turn_heap, num_trainers) == 0) {
                 x++;
                 printf("Moved East to the tile at coordinates (%d, %d)!\n", x - WORLD_CENTER_X, y - WORLD_CENTER_Y);
             }
@@ -520,7 +519,7 @@ int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *
                 printf("You are already at the Easternmost tile!\n");
             }
         } else if (strcmp(command, "w") == 0) {
-            if (move(world, x - 1, y, turn_heap, num_trainers) == 0) {
+            if (change_tile(world, x - 1, y, turn_heap, num_trainers) == 0) {
                 x--;
                 printf("Moved West to the tile at coordinates (%d, %d)!\n", x - WORLD_CENTER_X, y - WORLD_CENTER_Y);
             }
@@ -572,7 +571,7 @@ int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *
                 else {
                     x = WORLD_CENTER_X + coordinates[0];
                     y = WORLD_CENTER_Y + coordinates[1];
-                    move(world, x, y, turn_heap, num_trainers);
+                    change_tile(world, x, y, turn_heap, num_trainers);
                     printf("Flew to the tile at coordinates (%d, %d)!\n", x - WORLD_CENTER_X, y - WORLD_CENTER_Y);
                 }
             }
@@ -605,7 +604,7 @@ int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *
 
 }
 
-int move(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], int x, int y, struct heap *turn_heap, int num_trainers) {
+int change_tile(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], int x, int y, struct heap *turn_heap, int num_trainers) {
 
     if (x >= 0 && x < WORLD_WIDTH_X && y >= 0 && y < WORLD_LENGTH_Y) {
         if (world[y][x] == NULL) {
