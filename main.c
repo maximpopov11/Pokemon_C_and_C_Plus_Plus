@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <limits.h>
@@ -35,7 +34,7 @@ enum character_type {
 struct terrain {
     //id is for comparison
     int id;
-    char character;
+    char printable_character;
     int path_weight;
     int pc_weight;
     int rival_weight;
@@ -60,13 +59,14 @@ struct character {
     int x;
     int y;
     enum character_type type;
-    char printable_charter;
+    char printable_character;
     char color[10];
     int turn;
     heap_node_t *heap_node;
     int direction_set;
     int x_direction;
     int y_direction;
+    int in_building;
 };
 
 //todo: QOL: replace all struct names with name_t rather than struct name
@@ -103,8 +103,12 @@ static int32_t comparator_character_movement(const void *key, const void *with) 
 }
 
 int print_usage();
+int initialize_terminal();
 int turn_based_movement(struct tile *tile, struct heap *turn_heap);
+int player_turn(struct tile *tile, struct character *player_character);
 int move_character(struct tile *tile, int x, int y, int new_x, int new_y);
+int enter_center(struct character *player_character);
+int enter_mart(struct character *player_character);
 int teleport_player_character(struct tile *tile);
 int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *turn_heap, int num_trainers);
 int change_tile(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], int x, int y, struct heap *turn_heap, int num_trainers);
@@ -161,18 +165,13 @@ int main(int argc, char *argv[]) {
     }
 
     //run program
-    initscr();
-    //todo: DELETE: tests printing
-    addstr("test\n");
-    //todo: DELETE: tests reading
-    addch(getch());
     srand(time(NULL));
+    initialize_terminal();
     struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X] = {0};
     struct heap turn_heap;
     heap_init(&turn_heap, comparator_character_movement, NULL);
     struct tile home_tile = create_tile(world, WORLD_CENTER_X, WORLD_CENTER_Y, &turn_heap, numtrainers);
     world[WORLD_CENTER_Y][WORLD_CENTER_X] = &home_tile;
-    print_tile_terrain(&home_tile);
     turn_based_movement(&home_tile, &turn_heap);
     endwin();
     return 0;
@@ -187,6 +186,18 @@ int print_usage() {
 
 }
 
+int initialize_terminal() {
+
+    initscr();
+    raw();
+    noecho();
+    curs_set(0);
+    keypad(stdscr, TRUE);
+
+    return 0;
+
+}
+
 int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
 
     //todo: QOL: remove duplicate code between Rival/Hiker, has direction can change_tile, Random Walker/Wanderer/Pacer, etc.
@@ -195,7 +206,10 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
     while ((character = heap_remove_min(turn_heap))) {
         character->heap_node = NULL;
         if (character->type == PLAYER) {
-            character->turn += MINIMUM_TURN;
+            clear();
+            addstr("It's your turn! Press z for help!\n");
+            print_tile_terrain(tile);
+            player_turn(tile, character);
         }
         else if (character->type == RIVAL) {
             //find a legal point to change_tile to
@@ -422,10 +436,123 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
             character->turn += MINIMUM_TURN;
         }
         character->heap_node = heap_insert(turn_heap, character);
-        print_tile_terrain(tile);
-        usleep(250000);
     }
     heap_delete(turn_heap);
+
+    return 0;
+
+}
+
+int player_turn(struct tile *tile, struct character *player_character) {
+
+    //todo: BUG: refactor rival/hiker chase maps upon PC movement
+    //todo: ASSIGNED: no more teleport PC upon eaten, now enter combat
+    //todo: BUG: double prints (message and map) upon all moves (once with correct print and once with default prompt)
+    //todo: BUG: PC can't move to building because rival weight infinity
+    char input = getch();
+    int x = player_character->x;
+    int y = player_character->y;
+    int moving = 0;
+    int new_x = x;
+    int new_y = y;
+    //determine input
+    if (input == '7' || input == 'y') {
+        moving = 1;
+        new_x--;
+        new_y--;
+    }
+    else if (input == '8' || input == 'k') {
+        moving = 1;
+        new_y--;
+    }
+    else if (input == '9' || input == 'u') {
+        moving = 1;
+        new_x++;
+        new_y--;
+    }
+    else if (input == '6' || input == 'l') {
+        moving = 1;
+        new_x++;
+    }
+    else if (input == '3' || input == 'n') {
+        moving = 1;
+        new_x++;
+        new_y++;
+    }
+    else if (input == '2' || input == 'j') {
+        moving = 1;
+        new_y++;
+    }
+    else if (input == '1' || input == 'b') {
+        moving = 1;
+        new_x--;
+        new_y++;
+    }
+    else if (input == '4' || input == 'h') {
+        moving = 1;
+        new_x--;
+    }
+    else if (input == '>') {
+        if (tile->tile[y][x].terrain.id == center.id) {
+            enter_center(player_character);
+        }
+        else if (tile->tile[y][x].terrain.id == mart.id) {
+            enter_mart(player_character);
+        }
+        else {
+            clear();
+            addstr("There is no pokecenter or pokemart here so you can't enter one!\n");
+            print_tile_terrain(tile);
+        }
+    }
+    else if (input == '<') {
+        //todo: ASSIGNED: implement leave center (reprint map) if in center and error message otherwise
+    }
+    else if (input == '5' || input == ' ' || input == '.') {
+        player_character->turn += MINIMUM_TURN;
+        return 0;
+    }
+    else if (input == 't') {
+        //todo: ASSIGNED: list trainers
+    }
+    //todo: ASSIGNED: up arrow scroll up
+    //todo: ASSIGNED: down arrow scroll down
+    //todo: ASSIGNED: escape exit trainer scroll
+    else if (input == 'Q') {
+        //todo: ASSIGNED: quit the game
+    }
+    else if (input == 'z') {
+        //todo: ASSIGNED: help: print all commands
+    }
+    else {
+        //todo: ASSIGNED: print illegal command message
+    }
+
+    //call movement function if moving
+    if (moving == 1) {
+        //todo: ASSIGNED: move onto edge path = move past edge onto next tile
+        //if terrain can be crossed
+        if (tile->tile[new_y][new_x].terrain.rival_weight != INT_MAX) {
+            if (tile->tile[new_y][new_x].character != NULL) {
+                //todo: ASSIGNED: combat screen with victory message and escape to leave
+            }
+            else {
+                move_character(tile, x, y, new_x, new_y);
+                player_character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
+            }
+        }
+        else {
+            //todo: ASSIGNED: provide info of where moved (failed) and what terrain is there
+            clear();
+            addstr("You can't cross that kind of terrain!\n");
+            print_tile_terrain(tile);
+            return player_turn(tile, player_character);
+        }
+    }
+    //if not moving can continue to take actions
+    else {
+        //todo: ASSIGNED: still player's turn, call this function and immediately return after
+    }
 
     return 0;
 
@@ -442,6 +569,28 @@ int move_character(struct tile *tile, int x, int y, int new_x, int new_y) {
     struct character *temp_character = tile->tile[y][x].character;
     tile->tile[y][x].character = NULL;
     tile->tile[new_y][new_x].character = temp_character;
+
+    return 0;
+
+}
+
+int enter_center(struct character *player_character) {
+
+    player_character->in_building = 1;
+    clear();
+    addstr("You are in a pokecenter! Unfortunately this center is rather barren. Leave by entering \'<\'\n");
+    refresh();
+
+    return 0;
+
+}
+
+int enter_mart(struct character *player_character) {
+
+    player_character->in_building = 1;
+    clear();
+    addstr("You are in a pokemart! Unfortunately this mart is rather barren. Leave by entering \'<\'\n");
+    refresh();
 
     return 0;
 
@@ -472,6 +621,7 @@ int teleport_player_character(struct tile *tile) {
 
 }
 
+//todo: ASSIGNED: no longer a necessary function
 int interaction(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], struct heap *turn_heap, int num_trainers) {
     //todo: QOL: break up into smaller functions
     print_tile_terrain(world[WORLD_CENTER_Y][WORLD_CENTER_X]);
@@ -615,6 +765,7 @@ int change_tile(struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X], int x, int y,
             *new_tile = create_tile(world, x, y, turn_heap, num_trainers);
             world[y][x] = new_tile;
         }
+        addstr("It's your turn! Press z for help!\n");
         print_tile_terrain(world[y][x]);
         return 0;
     }
@@ -1172,10 +1323,11 @@ int place_player_character(struct tile *tile, struct heap *turn_heap) {
     player_character->x = x;
     player_character->y = y;
     player_character->type = PLAYER;
-    player_character->printable_charter = '@';
+    player_character->printable_character = '@';
     strcpy(player_character->color, "\033[0;36m");
     player_character->turn = 0;
     player_character->direction_set = 0;
+    player_character->in_building = 0;
     player_character->heap_node = heap_insert(turn_heap, player_character);
     tile->player_character = player_character;
     tile->tile[y][x].character = player_character;
@@ -1266,10 +1418,11 @@ int place_trainer_type(struct tile *tile, struct heap *turn_heap, int num_traine
         trainer->x = x;
         trainer->y = y;
         trainer->type = trainer_type;
-        trainer->printable_charter = character;
+        trainer->printable_character = character;
         strcpy(trainer->color, "\033[31m");
         trainer->turn = 0;
         trainer->direction_set = 0;
+        trainer->in_building = 0;
         trainer->heap_node = heap_insert(turn_heap, trainer);
         tile->tile[y][x].character = trainer;
         num_trainer--;
@@ -1344,7 +1497,7 @@ int dijkstra(struct tile *tile, enum character_type trainer_type) {
                 rival_distance_tile[i][j] = tile->tile[i][j].distance;
             }
             else {
-                //character type = hiker
+                //printable_character type = hiker
                 hiker_distance_tile[i][j] = tile->tile[i][j].distance;
             }
         }
@@ -1378,29 +1531,21 @@ double distance(int x1, int y1, int x2, int y2) {
 
 int print_tile_terrain(struct tile *tile) {
 
-    for (int i = 0; i < TILE_LENGTH_Y; i++) {
-        for (int j = 0; j < TILE_WIDTH_X; j++) {
-            char character = tile->tile[i][j].terrain.character;
-            if (tile->tile[i][j].character != NULL) {
-                printf("%s", tile->tile[i][j].character->color);
-                character = tile->tile[i][j].character->printable_charter;
+    for (int y = 0; y < TILE_LENGTH_Y; y++) {
+        for (int x = 0; x < TILE_WIDTH_X; x++) {
+            char printable_character = tile->tile[y][x].terrain.printable_character;
+            if (tile->tile[y][x].character != NULL) {
+                //todo: ASSIGNED: set color
+                printable_character = tile->tile[y][x].character->printable_character;
             }
             else {
-                printf("%s", tile->tile[i][j].terrain.color);
+                //todo: ASSIGNED: set color
             }
-            printf("%c ", character);
-            reset_color();
+            mvaddch(y + 1, x, printable_character);
         }
-        printf("\n");
     }
-
-    return 0;
-
-}
-
-int reset_color() {
-
-    printf("\033[0m");
+    addch('\n');
+    refresh();
 
     return 0;
 
