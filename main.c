@@ -7,6 +7,7 @@
 #include <ncurses.h>
 #include "heap.h"
 
+#define SCREEN_HEIGHT 24
 #define TILE_WIDTH_X 80
 #define TILE_LENGTH_Y 21
 #define WORLD_WIDTH_X 399
@@ -205,6 +206,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
             clear();
             addstr("It's your turn! Enter a command or press z for help!\n");
             print_tile_terrain(tile);
+            refresh();
              if (player_turn(tile, character, turn_heap) == 1) {
                  return 1;
              }
@@ -523,16 +525,42 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
             player_character->turn += MINIMUM_TURN;
             turn_completed = 1;
         } else if (input == 't') {
-            //todo: ASSIGNED: list trainers
-        } else if (input == ACS_UARROW) {
-            //todo: ASSIGNED: up arrow scroll up
-        } else if (input == ACS_DARROW) {
-            //todo: ASSIGNED: down arrow scroll down
-        } else if (input == 27) {
-            //escape
-            //todo: ASSIGNED: escape exit trainer scroll
+            //todo: ASSIGNED: continue in screen until escape pressed
+            struct character *trainers [num_trainers];
+            int count = 0;
+            for (int i = 1; i < TILE_LENGTH_Y - 1; i++) {
+                for (int j = 1; j < TILE_WIDTH_X - 1; j++) {
+                    struct character *character = tile->tile[i][j].character;
+                    if (character != NULL && character->type != PLAYER) {
+                        trainers[count] = character;
+                        count++;
+                    }
+                }
+            }
+            int position = 0;
+            addstr("Trainer list:\n");
+            for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
+                //todo: ASSIGNED: list trainer info (type, position, defeated status)
+            }
+            char command = '?';
+            while (command != 27 && command != ACS_UARROW && command != ACS_DARROW) {
+                if (command == 27) {
+                    //todo: BUG TEST: test escape leaves trainer list
+                    turn_completed = 1;
+                }
+                if (command == ACS_UARROW) {
+                    //if can go up by at least 1
+                        //go up by screen height - 1, or to top, whichever closer
+                    //else print can't
+                    //todo: scroll up if possible message otherwise
+                }
+                if (command == ACS_DARROW) {
+                    //do up in reverse
+                    //todo: scroll up if possible message otherwise
+                }
+            }
+            //todo: ASSIGNED: getch and act upon escape or scroll
         } else if (input == 'Q') {
-            //todo: ASSIGNED: must allow Q to quit at any time (including if in battle screen)
             clear();
             addstr("Are you sure you want to quit (y/n)? All progress will be lost.\n");
             refresh();
@@ -631,8 +659,8 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                         player_character->y = 1;
                     }
                     //updates map with new PC coordinates
-                    //todo: ASSIGNED: create current tile globally and don't provide tile info to functions which use only current
                     //todo: ASSIGNED: update tile pc info
+                    //todo: ASSIGNED: make new heap for this tile (attach heap to tile)
                     //todo: ASSIGNED: refactor dijkstra distance tiles
                 }
                 else {
