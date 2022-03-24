@@ -469,7 +469,7 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
     int x = player_character->x;
     int y = player_character->y;
     while (turn_completed == 0) {
-        char input = getch();
+        int input = getch();
         int moving = 0;
         int new_x = x;
         int new_y = y;
@@ -581,14 +581,15 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                 screen_row++;
             }
             refresh();
-            char command = '?';
+            int command = -1;
             while (command != 27 && command != ACS_UARROW && command != ACS_DARROW) {
                 command = getch();
+                screen_row = 1;
                 if (command == 27) {
                     turn_completed = 1;
                 }
-                else if (command == ACS_UARROW) {
-                    //todo: BUG TEST: test scroll up
+                else if (command == KEY_UP) {
+                    //xtodo: BUG TEST: test scroll up
                     if (position > 1) {
                         position -= SCREEN_HEIGHT - 1;
                         if (position < 0) {
@@ -676,7 +677,7 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                         refresh();
                     }
                 }
-                else if (command == ACS_DARROW) {
+                else if (command == KEY_DOWN) {
                     //todo: BUG TEST: test scroll down
                     if (position < num_trainers - SCREEN_HEIGHT + 1) {
                         position += SCREEN_HEIGHT - 1;
@@ -729,23 +730,27 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                             mvaddstr(screen_row, position_x, " ");
                             if (trainer->y != player_character->y) {
                                 char y_distance[3];
-                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
-                                addstr(y_distance);
                                 if (trainer->y < player_character->y) {
+                                    sprintf(y_distance, "%d ", player_character->y - trainer->y);
+                                    addstr(y_distance);
                                     addstr("North ");
                                 }
                                 else {
+                                    sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                    addstr(y_distance);
                                     addstr("South ");
                                 }
                             }
                             if (trainer->x != player_character->x) {
                                 char x_distance[3];
-                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
-                                addstr(x_distance);
                                 if (trainer->x < player_character->x) {
+                                    sprintf(x_distance, "%d ", player_character->x - trainer->x);
+                                    addstr(x_distance);
                                     addstr("West");
                                 }
                                 else {
+                                    sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                    addstr(x_distance);
                                     addstr("East");
                                 }
                             }
@@ -760,7 +765,6 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                 }
                 else {
                     //command is invalid
-                    //todo: BUG: shows positions but does not show trainer type or defeated status
                     clear();
                     addstr("That is not a valid command! Press escape to return to the map.\n");
                     for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
@@ -769,23 +773,27 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                         mvaddstr(screen_row, position_x, " ");
                         if (trainer->y != player_character->y) {
                             char y_distance[3];
-                            sprintf(y_distance, "%d ", trainer->y - player_character->y);
-                            addstr(y_distance);
                             if (trainer->y < player_character->y) {
+                                sprintf(y_distance, "%d ", player_character->y - trainer->y);
+                                addstr(y_distance);
                                 addstr("North ");
                             }
                             else {
+                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                addstr(y_distance);
                                 addstr("South ");
                             }
                         }
                         if (trainer->x != player_character->x) {
                             char x_distance[3];
-                            sprintf(x_distance, "%d ", trainer->x - player_character->x);
-                            addstr(x_distance);
                             if (trainer->x < player_character->x) {
+                                sprintf(x_distance, "%d ", player_character->x - trainer->x);
+                                addstr(x_distance);
                                 addstr("West");
                             }
                             else {
+                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                addstr(x_distance);
                                 addstr("East");
                             }
                         }
@@ -802,7 +810,7 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
             clear();
             addstr("Are you sure you want to quit (y/n)? All progress will be lost.\n");
             refresh();
-            char quit = '?';
+            int quit = -1;
             while (quit != 'y' || quit != 'n') {
                 quit = getch();
                 if (quit == 'y') {
@@ -974,7 +982,7 @@ int combat(struct character *from_character, struct character *to_character) {
         addstr("Victory! A trainer challenged you to a duel and you trounced them! Press escape to leave.\n");
         refresh();
     }
-    char command = '?';
+    int command = -1;
     while (command != 27) {
         command = getch();
         clear();
