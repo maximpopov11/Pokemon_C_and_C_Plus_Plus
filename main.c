@@ -526,7 +526,6 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
             player_character->turn += MINIMUM_TURN;
             turn_completed = 1;
         } else if (input == 't') {
-            //todo: BUG: sometimes shows -North and -West (but also sometimes shows East correctly)
             struct character *trainers [num_trainers];
             int count = 0;
             for (int i = 1; i < TILE_LENGTH_Y - 1; i++) {
@@ -551,23 +550,27 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                 mvaddstr(screen_row, position_x, " ");
                 if (trainer->y != player_character->y) {
                     char y_distance[3];
-                    sprintf(y_distance, "%d ", trainer->y - player_character->y);
-                    addstr(y_distance);
                     if (trainer->y < player_character->y) {
+                        sprintf(y_distance, "%d ", player_character->y - trainer->y);
+                        addstr(y_distance);
                         addstr("North ");
                     }
                     else {
+                        sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                        addstr(y_distance);
                         addstr("South ");
                     }
                 }
                 if (trainer->x != player_character->x) {
                     char x_distance[3];
-                    sprintf(x_distance, "%d ", trainer->x - player_character->x);
-                    addstr(x_distance);
                     if (trainer->x < player_character->x) {
+                        sprintf(x_distance, "%d ", player_character->x - trainer->x);
+                        addstr(x_distance);
                         addstr("West");
                     }
                     else {
+                        sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                        addstr(x_distance);
                         addstr("East");
                     }
                 }
@@ -599,23 +602,27 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                             mvaddstr(screen_row, position_x, " ");
                             if (trainer->y != player_character->y) {
                                 char y_distance[3];
-                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
-                                addstr(y_distance);
                                 if (trainer->y < player_character->y) {
+                                    sprintf(y_distance, "%d ", player_character->y - trainer->y);
+                                    addstr(y_distance);
                                     addstr("North ");
                                 }
                                 else {
+                                    sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                    addstr(y_distance);
                                     addstr("South ");
                                 }
                             }
                             if (trainer->x != player_character->x) {
                                 char x_distance[3];
-                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
-                                addstr(x_distance);
                                 if (trainer->x < player_character->x) {
+                                    sprintf(x_distance, "%d ", player_character->x - trainer->x);
+                                    addstr(x_distance);
                                     addstr("West");
                                 }
                                 else {
+                                    sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                    addstr(x_distance);
                                     addstr("East");
                                 }
                             }
@@ -636,23 +643,27 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                             mvaddstr(screen_row, position_x, " ");
                             if (trainer->y != player_character->y) {
                                 char y_distance[3];
-                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
-                                addstr(y_distance);
                                 if (trainer->y < player_character->y) {
+                                    sprintf(y_distance, "%d ", player_character->y - trainer->y);
+                                    addstr(y_distance);
                                     addstr("North ");
                                 }
                                 else {
+                                    sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                    addstr(y_distance);
                                     addstr("South ");
                                 }
                             }
                             if (trainer->x != player_character->x) {
                                 char x_distance[3];
-                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
-                                addstr(x_distance);
                                 if (trainer->x < player_character->x) {
+                                    sprintf(x_distance, "%d ", player_character->x - trainer->x);
+                                    addstr(x_distance);
                                     addstr("West");
                                 }
                                 else {
+                                    sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                    addstr(x_distance);
                                     addstr("East");
                                 }
                             }
@@ -677,23 +688,27 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                             mvaddstr(screen_row, position_x, " ");
                             if (trainer->y != player_character->y) {
                                 char y_distance[3];
-                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
-                                addstr(y_distance);
                                 if (trainer->y < player_character->y) {
+                                    sprintf(y_distance, "%d ", player_character->y - trainer->y);
+                                    addstr(y_distance);
                                     addstr("North ");
                                 }
                                 else {
+                                    sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                    addstr(y_distance);
                                     addstr("South ");
                                 }
                             }
                             if (trainer->x != player_character->x) {
                                 char x_distance[3];
-                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
-                                addstr(x_distance);
                                 if (trainer->x < player_character->x) {
+                                    sprintf(x_distance, "%d ", player_character->x - trainer->x);
+                                    addstr(x_distance);
                                     addstr("West");
                                 }
                                 else {
+                                    sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                    addstr(x_distance);
                                     addstr("East");
                                 }
                             }
@@ -745,6 +760,7 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                 }
                 else {
                     //command is invalid
+                    //todo: BUG: shows positions but does not show trainer type or defeated status
                     clear();
                     addstr("That is not a valid command! Press escape to return to the map.\n");
                     for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
@@ -1934,11 +1950,11 @@ int print_tile_terrain(struct tile *tile) {
         for (int x = 0; x < TILE_WIDTH_X; x++) {
             char printable_character = tile->tile[y][x].terrain.printable_character;
             if (tile->tile[y][x].character != NULL) {
-                //todo: ASSIGNED: set color
+                //set color
                 printable_character = tile->tile[y][x].character->printable_character;
             }
             else {
-                //todo: ASSIGNED: set color
+                //set color
             }
             mvaddch(y + 1, x, printable_character);
         }
