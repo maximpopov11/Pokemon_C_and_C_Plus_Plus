@@ -58,7 +58,8 @@ struct terrain mart = {9, 'M', INT_MAX, 5, INT_MAX, INT_MAX, "\033[0;35m"};
 struct character {
     int x;
     int y;
-    enum character_type type;
+    enum character_type type_enum;
+    char *type_string;
     char printable_character;
     char color[10];
     int turn;
@@ -202,7 +203,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
 
     static struct character *character;
     while ((character = heap_remove_min(turn_heap))) {
-        if (character->type == PLAYER) {
+        if (character->type_enum == PLAYER) {
             clear();
             addstr("It's your turn! Enter a command or press z for help!\n");
             print_tile_terrain(tile);
@@ -211,7 +212,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                  return 1;
              }
         }
-        else if (character->type == RIVAL) {
+        else if (character->type_enum == RIVAL) {
             if (character->defeated == 1) {
                 //no longer paths to PC
                 character->turn += MINIMUM_TURN;
@@ -228,7 +229,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                             candidate_y < TILE_LENGTH_Y
                             && rival_distance_tile[candidate_y][candidate_x] != INT_MAX
                             && (tile->tile[candidate_y][candidate_x].character == NULL
-                                || (tile->tile[candidate_y][candidate_x].character->type == PLAYER &&
+                                || (tile->tile[candidate_y][candidate_x].character->type_enum == PLAYER &&
                                     character->defeated == 0))) {
                             if (rival_distance_tile[candidate_y][candidate_x] < new_distance) {
                                 new_x = candidate_x;
@@ -248,7 +249,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 }
             }
         }
-        else if (character->type == HIKER) {
+        else if (character->type_enum == HIKER) {
             if (character->defeated == 1) {
                 //no longer paths to PC
                 character->turn += MINIMUM_TURN;
@@ -265,7 +266,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                             candidate_y < TILE_LENGTH_Y
                             && hiker_distance_tile[candidate_y][candidate_x] != INT_MAX
                             && (tile->tile[candidate_y][candidate_x].character == NULL
-                                || (tile->tile[candidate_y][candidate_x].character->type == PLAYER &&
+                                || (tile->tile[candidate_y][candidate_x].character->type_enum == PLAYER &&
                                     character->defeated == 0))) {
                             if (hiker_distance_tile[candidate_y][candidate_x] < new_distance) {
                                 new_x = candidate_x;
@@ -283,14 +284,14 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 }
             }
         }
-        else if (character->type == RANDOM_WALKER) {
+        else if (character->type_enum == RANDOM_WALKER) {
             int new_x = character->x + character->x_direction;
             int new_y = character->y + character->y_direction;
             //if we have a direction set and can continue in it
             if (character->direction_set == 1 && new_x > 0 && new_x < TILE_WIDTH_X && new_y > 0 && new_y < TILE_LENGTH_Y
             && tile->tile[new_y][new_x].terrain.rival_weight != INT_MAX
             && (tile->tile[new_y][new_x].character == NULL
-            || (tile->tile[new_y][new_x].character->type == PLAYER && character->defeated == 0))) {
+            || (tile->tile[new_y][new_x].character->type_enum == PLAYER && character->defeated == 0))) {
                 move_character(tile, character->x, character->y, new_x, new_y);
                 character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
             }
@@ -303,7 +304,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                         if (x != 0 || y != 0) {
                             if (tile->tile[character->y + y][character->x + x].terrain.rival_weight != INT_MAX
                             && (tile->tile[character->y + y][character->x + x].character == NULL
-                            || (tile->tile[character->y + y][character->x + x].character->type == PLAYER
+                            || (tile->tile[character->y + y][character->x + x].character->type_enum == PLAYER
                             && character->defeated == 0))) {
                                 has_possible_direction = 1;
                             }
@@ -322,7 +323,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                         if ((x != 0 || y != 0) && new_x > 0 && new_x < TILE_WIDTH_X && new_y > 0 && new_y < TILE_LENGTH_Y
                         && tile->tile[new_y][new_x].terrain.rival_weight != INT_MAX
                         && (tile->tile[new_y][new_x].character == NULL
-                        || (tile->tile[new_y][new_x].character->type == PLAYER && character->defeated == 0))) {
+                        || (tile->tile[new_y][new_x].character->type_enum == PLAYER && character->defeated == 0))) {
                             found = 1;
                         }
                     }
@@ -337,13 +338,13 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 }
             }
         }
-        else if (character->type == PACER) {
+        else if (character->type_enum == PACER) {
             int new_x = character->x + character->x_direction;
             int new_y = character->y + character->y_direction;
             //change_tile in direction
             if (character->direction_set == 1 && new_x > 0 && new_x < TILE_WIDTH_X && new_y > 0 && new_y < TILE_LENGTH_Y
                 && tile->tile[new_y][new_x].terrain.rival_weight != INT_MAX
-                && (tile->tile[new_y][new_x].character == NULL || tile->tile[new_y][new_x].character->type == PLAYER)) {
+                && (tile->tile[new_y][new_x].character == NULL || tile->tile[new_y][new_x].character->type_enum == PLAYER)) {
                 move_character(tile, character->x, character->y, new_x, new_y);
                 character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
             }
@@ -364,7 +365,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                         if (x != 0 || y != 0) {
                             if (tile->tile[character->y + y][character->x + x].terrain.rival_weight != INT_MAX
                             && (tile->tile[character->y + y][character->x + x].character == NULL
-                            || (tile->tile[character->y + y][character->x + x].character->type == PLAYER
+                            || (tile->tile[character->y + y][character->x + x].character->type_enum == PLAYER
                             && character->defeated == 0))) {
                                 has_possible_direction = 1;
                             }
@@ -398,13 +399,13 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 }
             }
         }
-        else if (character->type == WANDERER) {
+        else if (character->type_enum == WANDERER) {
             int new_x = character->x + character->x_direction;
             int new_y = character->y + character->y_direction;
             if (character->direction_set == 1 && new_x > 0 && new_x < TILE_WIDTH_X && new_y > 0 && new_y < TILE_LENGTH_Y
                 && tile->tile[new_y][new_x].terrain.id == tile->tile[character->y][character->x].terrain.id
                 && (tile->tile[new_y][new_x].character == NULL
-                || (tile->tile[new_y][new_x].character->type == PLAYER && character->defeated == 0))) {
+                || (tile->tile[new_y][new_x].character->type_enum == PLAYER && character->defeated == 0))) {
                 move_character(tile, character->x, character->y, new_x, new_y);
                 character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
             }
@@ -435,7 +436,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                         if ((x != 0 || y != 0) && new_x > 0 && new_x < TILE_WIDTH_X && new_y > 0 && new_y < TILE_LENGTH_Y
                             && tile->tile[new_y][new_x].terrain.id == tile->tile[character->y][character->x].terrain.id
                             && (tile->tile[new_y][new_x].character == NULL
-                            || (tile->tile[new_y][new_x].character->type == PLAYER && character->defeated == 0))) {
+                            || (tile->tile[new_y][new_x].character->type_enum == PLAYER && character->defeated == 0))) {
                             found = 1;
                         }
                     }
@@ -450,7 +451,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 }
             }
         }
-        else if (character->type == STATIONARY) {
+        else if (character->type_enum == STATIONARY) {
             character->turn += MINIMUM_TURN;
         }
         heap_insert(turn_heap, character);
@@ -525,41 +526,262 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
             player_character->turn += MINIMUM_TURN;
             turn_completed = 1;
         } else if (input == 't') {
-            //todo: ASSIGNED: continue in screen until escape pressed
+            //todo: BUG: sometimes shows -North and -West (but also sometimes shows East correctly)
             struct character *trainers [num_trainers];
             int count = 0;
             for (int i = 1; i < TILE_LENGTH_Y - 1; i++) {
                 for (int j = 1; j < TILE_WIDTH_X - 1; j++) {
                     struct character *character = tile->tile[i][j].character;
-                    if (character != NULL && character->type != PLAYER) {
+                    if (character != NULL && character->type_enum != PLAYER) {
                         trainers[count] = character;
                         count++;
                     }
                 }
             }
             int position = 0;
-            addstr("Trainer list:\n");
+            int screen_row = 1;
+            int type_x = 0;
+            int position_x = 19;
+            int defeated_status_x = 40;
+            clear();
+            addstr("Trainer list: Press escape to return to the map\n");
             for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
-                //todo: ASSIGNED: list trainer info (type, position, defeated status)
+                struct character *trainer = trainers[i];
+                mvaddstr(screen_row, type_x, trainer->type_string);
+                mvaddstr(screen_row, position_x, " ");
+                if (trainer->y != player_character->y) {
+                    char y_distance[3];
+                    sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                    addstr(y_distance);
+                    if (trainer->y < player_character->y) {
+                        addstr("North ");
+                    }
+                    else {
+                        addstr("South ");
+                    }
+                }
+                if (trainer->x != player_character->x) {
+                    char x_distance[3];
+                    sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                    addstr(x_distance);
+                    if (trainer->x < player_character->x) {
+                        addstr("West");
+                    }
+                    else {
+                        addstr("East");
+                    }
+                }
+                if (trainer->defeated == 1) {
+                    mvaddstr(screen_row, defeated_status_x, "Defeated");
+                }
+                addstr("\n");
+                screen_row++;
             }
+            refresh();
             char command = '?';
             while (command != 27 && command != ACS_UARROW && command != ACS_DARROW) {
+                command = getch();
                 if (command == 27) {
-                    //todo: BUG TEST: test escape leaves trainer list
                     turn_completed = 1;
                 }
-                if (command == ACS_UARROW) {
-                    //if can go up by at least 1
-                        //go up by screen height - 1, or to top, whichever closer
-                    //else print can't
-                    //todo: scroll up if possible message otherwise
+                else if (command == ACS_UARROW) {
+                    //todo: BUG TEST: test scroll up
+                    if (position > 1) {
+                        position -= SCREEN_HEIGHT - 1;
+                        if (position < 0) {
+                            position = 0;
+                        }
+                        clear();
+                        addstr("Trainer list: Press escape to return to the map\n");
+                        for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
+                            struct character *trainer = trainers[i];
+                            mvaddstr(screen_row, type_x, trainer->type_string);
+                            mvaddstr(screen_row, position_x, " ");
+                            if (trainer->y != player_character->y) {
+                                char y_distance[3];
+                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                addstr(y_distance);
+                                if (trainer->y < player_character->y) {
+                                    addstr("North ");
+                                }
+                                else {
+                                    addstr("South ");
+                                }
+                            }
+                            if (trainer->x != player_character->x) {
+                                char x_distance[3];
+                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                addstr(x_distance);
+                                if (trainer->x < player_character->x) {
+                                    addstr("West");
+                                }
+                                else {
+                                    addstr("East");
+                                }
+                            }
+                            if (trainer->defeated == 1) {
+                                mvaddstr(screen_row, defeated_status_x, "Defeated");
+                            }
+                            addstr("\n");
+                            screen_row++;
+                        }
+                        refresh();
+                    }
+                    else {
+                        clear();
+                        addstr("You are already at the top of the list so you cannot scroll up.\n");
+                        for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
+                            struct character *trainer = trainers[i];
+                            mvaddstr(screen_row, type_x, trainer->type_string);
+                            mvaddstr(screen_row, position_x, " ");
+                            if (trainer->y != player_character->y) {
+                                char y_distance[3];
+                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                addstr(y_distance);
+                                if (trainer->y < player_character->y) {
+                                    addstr("North ");
+                                }
+                                else {
+                                    addstr("South ");
+                                }
+                            }
+                            if (trainer->x != player_character->x) {
+                                char x_distance[3];
+                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                addstr(x_distance);
+                                if (trainer->x < player_character->x) {
+                                    addstr("West");
+                                }
+                                else {
+                                    addstr("East");
+                                }
+                            }
+                            if (trainer->defeated == 1) {
+                                mvaddstr(screen_row, defeated_status_x, "Defeated");
+                            }
+                            addstr("\n");
+                            screen_row++;
+                        }
+                        refresh();
+                    }
                 }
-                if (command == ACS_DARROW) {
-                    //do up in reverse
-                    //todo: scroll up if possible message otherwise
+                else if (command == ACS_DARROW) {
+                    //todo: BUG TEST: test scroll down
+                    if (position < num_trainers - SCREEN_HEIGHT + 1) {
+                        position += SCREEN_HEIGHT - 1;
+                        clear();
+                        addstr("Trainer list: Press escape to return to the map\n");
+                        for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
+                            struct character *trainer = trainers[i];
+                            mvaddstr(screen_row, type_x, trainer->type_string);
+                            mvaddstr(screen_row, position_x, " ");
+                            if (trainer->y != player_character->y) {
+                                char y_distance[3];
+                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                addstr(y_distance);
+                                if (trainer->y < player_character->y) {
+                                    addstr("North ");
+                                }
+                                else {
+                                    addstr("South ");
+                                }
+                            }
+                            if (trainer->x != player_character->x) {
+                                char x_distance[3];
+                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                addstr(x_distance);
+                                if (trainer->x < player_character->x) {
+                                    addstr("West");
+                                }
+                                else {
+                                    addstr("East");
+                                }
+                            }
+                            if (trainer->defeated == 1) {
+                                mvaddstr(screen_row, defeated_status_x, "Defeated");
+                            }
+                            addstr("\n");
+                            screen_row++;
+                        }
+                        refresh();
+                    }
+                    else {
+                        clear();
+                        addstr("You are already at the bottom of the list so you cannot scroll down.\n");
+                        for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
+                            struct character *trainer = trainers[i];
+                            mvaddstr(screen_row, type_x, trainer->type_string);
+                            mvaddstr(screen_row, position_x, " ");
+                            if (trainer->y != player_character->y) {
+                                char y_distance[3];
+                                sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                                addstr(y_distance);
+                                if (trainer->y < player_character->y) {
+                                    addstr("North ");
+                                }
+                                else {
+                                    addstr("South ");
+                                }
+                            }
+                            if (trainer->x != player_character->x) {
+                                char x_distance[3];
+                                sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                                addstr(x_distance);
+                                if (trainer->x < player_character->x) {
+                                    addstr("West");
+                                }
+                                else {
+                                    addstr("East");
+                                }
+                            }
+                            if (trainer->defeated == 1) {
+                                mvaddstr(screen_row, defeated_status_x, "Defeated");
+                            }
+                            addstr("\n");
+                            screen_row++;
+                        }
+                        refresh();
+                    }
+                }
+                else {
+                    //command is invalid
+                    clear();
+                    addstr("That is not a valid command! Press escape to return to the map.\n");
+                    for (int i = position; i < position + SCREEN_HEIGHT - 1 && i < num_trainers; i++) {
+                        struct character *trainer = trainers[i];
+                        mvaddstr(screen_row, type_x, trainer->type_string);
+                        mvaddstr(screen_row, position_x, " ");
+                        if (trainer->y != player_character->y) {
+                            char y_distance[3];
+                            sprintf(y_distance, "%d ", trainer->y - player_character->y);
+                            addstr(y_distance);
+                            if (trainer->y < player_character->y) {
+                                addstr("North ");
+                            }
+                            else {
+                                addstr("South ");
+                            }
+                        }
+                        if (trainer->x != player_character->x) {
+                            char x_distance[3];
+                            sprintf(x_distance, "%d ", trainer->x - player_character->x);
+                            addstr(x_distance);
+                            if (trainer->x < player_character->x) {
+                                addstr("West");
+                            }
+                            else {
+                                addstr("East");
+                            }
+                        }
+                        if (trainer->defeated == 1) {
+                            mvaddstr(screen_row, defeated_status_x, "Defeated");
+                        }
+                        addstr("\n");
+                        screen_row++;
+                    }
+                    refresh();
                 }
             }
-            //todo: ASSIGNED: getch and act upon escape or scroll
         } else if (input == 'Q') {
             clear();
             addstr("Are you sure you want to quit (y/n)? All progress will be lost.\n");
@@ -659,6 +881,7 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                         player_character->y = 1;
                     }
                     //updates map with new PC coordinates
+                    //todo: ASSIGNED: current tile defined globally by x and y (on world) defined globally and world already defined
                     //todo: ASSIGNED: update tile pc info
                     //todo: ASSIGNED: make new heap for this tile (attach heap to tile)
                     //todo: ASSIGNED: refactor dijkstra distance tiles
@@ -693,8 +916,8 @@ int move_character(struct tile *tile, int x, int y, int new_x, int new_y) {
     //if moving onto PC
     if (to_character != NULL) {
         //pc-trainer combat instigated by either party
-        if (from_character->type == PLAYER || to_character->type == PLAYER) {
-            if (from_character->type == PLAYER && to_character->defeated == 1) {
+        if (from_character->type_enum == PLAYER || to_character->type_enum == PLAYER) {
+            if (from_character->type_enum == PLAYER && to_character->defeated == 1) {
                 //PC should not be allowed to move to a defeated trainer's location (as of assignment 1.05)
                 return 2;
             }
@@ -721,7 +944,7 @@ int move_character(struct tile *tile, int x, int y, int new_x, int new_y) {
 
 int combat(struct character *from_character, struct character *to_character) {
 
-    if (from_character->type == PLAYER) {
+    if (from_character->type_enum == PLAYER) {
         //player attacks trainer
         to_character->defeated = 1;
         clear();
@@ -1471,7 +1694,8 @@ int place_player_character(struct tile *tile, struct heap *turn_heap) {
     struct character *player_character = malloc(sizeof(struct character));
     player_character->x = x;
     player_character->y = y;
-    player_character->type = PLAYER;
+    player_character->type_enum = PLAYER;
+    player_character->type_string = "PLAYER";
     player_character->printable_character = '@';
     strcpy(player_character->color, "\033[0;36m");
     player_character->turn = 0;
@@ -1491,13 +1715,14 @@ int place_player_character(struct tile *tile, struct heap *turn_heap) {
 
 int place_trainers(struct tile *tile, struct heap *turn_heap) {
 
+    int num_trainers_copy = num_trainers;
     int num_rivals = 0;
     int num_hikers = 0;
     int num_random_walkers = 0;
     int num_pacers = 0;
     int num_wanderers = 0;
     int num_stationaries = 0;
-    while (num_trainers > 0) {
+    while (num_trainers_copy > 0) {
         if (num_rivals == 0) {
             num_rivals++;
         }
@@ -1525,7 +1750,7 @@ int place_trainers(struct tile *tile, struct heap *turn_heap) {
                 num_stationaries++;
             }
         }
-        num_trainers--;
+        num_trainers_copy--;
     }
 
     place_trainer_type(tile, turn_heap, num_rivals, RIVAL, 'r');
@@ -1567,7 +1792,30 @@ int place_trainer_type(struct tile *tile, struct heap *turn_heap, int num_traine
         struct character *trainer = malloc(sizeof(struct character));
         trainer->x = x;
         trainer->y = y;
-        trainer->type = trainer_type;
+        trainer->type_enum = trainer_type;
+        //initialize type_string
+        if (trainer->type_enum == RIVAL) {
+            trainer->type_string = "RIVAL";
+        }
+        else if (trainer->type_enum == HIKER) {
+            trainer->type_string = "HIKER";
+        }
+        else if (trainer->type_enum == RANDOM_WALKER) {
+            trainer->type_string = "RANDOM WALKER";
+        }
+        else if (trainer->type_enum == PACER) {
+            trainer->type_string = "PACER";
+        }
+        else if (trainer->type_enum == WANDERER) {
+            trainer->type_string = "WANDERER";
+        }
+        else if (trainer->type_enum == STATIONARY) {
+            trainer->type_string = "STATIONARY";
+        }
+        else {
+            //trainer is not one of the trainer types
+            return 1;
+        }
         trainer->printable_character = character;
         strcpy(trainer->color, "\033[31m");
         trainer->turn = 0;
@@ -1605,7 +1853,7 @@ int dijkstra(struct tile *tile, enum character_type trainer_type) {
                 weight = tile->tile[y][x].terrain.rival_weight;
             }
             else {
-                //character_type type == hiker
+                //character_type type_enum == hiker
                 weight = tile->tile[y][x].terrain.hiker_weight;
             }
             if (weight != INT_MAX) {
@@ -1627,7 +1875,7 @@ int dijkstra(struct tile *tile, enum character_type trainer_type) {
                     if (trainer_type == RIVAL) {
                         candidate_distance = point->distance + neighbor->terrain.rival_weight;
                     } else {
-                        //character_type type == hiker
+                        //character_type type_enum == hiker
                         candidate_distance = point->distance + neighbor->terrain.hiker_weight;
                     }
                     if (neighbor->heap_node != NULL && candidate_distance < neighbor->distance &&
@@ -1648,7 +1896,7 @@ int dijkstra(struct tile *tile, enum character_type trainer_type) {
                 rival_distance_tile[i][j] = tile->tile[i][j].distance;
             }
             else {
-                //printable_character type = hiker
+                //printable_character type_enum = hiker
                 hiker_distance_tile[i][j] = tile->tile[i][j].distance;
             }
         }
