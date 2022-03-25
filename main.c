@@ -105,9 +105,9 @@ static int32_t comparator_character_movement(const void *key, const void *with) 
 
 int print_usage();
 int initialize_terminal();
-int turn_based_movement(struct tile *tile, struct heap *turn_heap);
-int player_turn(struct tile *tile, struct character *player_character, struct heap *turn_heap);
-int move_character(struct tile *tile, int x, int y, int new_x, int new_y);
+int turn_based_movement(struct heap *turn_heap);
+int player_turn(struct character *player_character, struct heap *turn_heap);
+int move_character(int x, int y, int new_x, int new_y);
 int combat(struct character *from_character, struct character *to_character);
 int enter_center(struct character *player_character);
 int enter_mart(struct character *player_character);
@@ -136,6 +136,8 @@ int print_tile_trainer_distances(struct tile *tile);
 int print_tile_trainer_distances_printer(struct tile *tile);
 
 struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X] = {0};
+int current_tile_x;
+int current_tile_y;
 int num_trainers;
 
 int main(int argc, char *argv[]) {
@@ -172,8 +174,10 @@ int main(int argc, char *argv[]) {
     struct heap turn_heap;
     heap_init(&turn_heap, comparator_character_movement, NULL);
     struct tile home_tile = create_tile(WORLD_CENTER_X, WORLD_CENTER_Y, &turn_heap);
+    current_tile_x = WORLD_CENTER_X;
+    current_tile_y = WORLD_CENTER_Y;
     world[WORLD_CENTER_Y][WORLD_CENTER_X] = &home_tile;
-    turn_based_movement(&home_tile, &turn_heap);
+    turn_based_movement(&turn_heap);
     endwin();
     return 0;
 
@@ -199,8 +203,9 @@ int initialize_terminal() {
 
 }
 
-int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
+int turn_based_movement(struct heap *turn_heap) {
 
+    struct tile *tile = world[current_tile_y][current_tile_x];
     static struct character *character;
     while ((character = heap_remove_min(turn_heap))) {
         if (character->type_enum == PLAYER) {
@@ -208,7 +213,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
             addstr("It's your turn! Enter a command or press z for help!\n");
             print_tile_terrain(tile);
             refresh();
-             if (player_turn(tile, character, turn_heap) == 1) {
+             if (player_turn(character, turn_heap) == 1) {
                  return 1;
              }
         }
@@ -241,7 +246,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 }
                 if (new_distance != INT_MAX) {
                     //if legal point to move to found, change_tile there
-                    move_character(tile, character->x, character->y, new_x, new_y);
+                    move_character(character->x, character->y, new_x, new_y);
                     character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
                 } else {
                     //no legal point to change_tile to found
@@ -277,7 +282,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                     }
                 }
                 if (new_distance != INT_MAX) {
-                    move_character(tile, character->x, character->y, new_x, new_y);
+                    move_character(character->x, character->y, new_x, new_y);
                     character->turn += tile->tile[new_y][new_x].terrain.hiker_weight;
                 } else {
                     character->turn += MINIMUM_TURN;
@@ -292,7 +297,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
             && tile->tile[new_y][new_x].terrain.rival_weight != INT_MAX
             && (tile->tile[new_y][new_x].character == NULL
             || (tile->tile[new_y][new_x].character->type_enum == PLAYER && character->defeated == 0))) {
-                move_character(tile, character->x, character->y, new_x, new_y);
+                move_character(character->x, character->y, new_x, new_y);
                 character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
             }
             //no direction set or can't continue in set direction
@@ -330,7 +335,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                     character->x_direction = x;
                     character->y_direction = y;
                     character->direction_set = 1;
-                    move_character(tile, character->x, character->y, new_x, new_y);
+                    move_character(character->x, character->y, new_x, new_y);
                     character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
                 }
                 else {
@@ -345,7 +350,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
             if (character->direction_set == 1 && new_x > 0 && new_x < TILE_WIDTH_X && new_y > 0 && new_y < TILE_LENGTH_Y
                 && tile->tile[new_y][new_x].terrain.rival_weight != INT_MAX
                 && (tile->tile[new_y][new_x].character == NULL || tile->tile[new_y][new_x].character->type_enum == PLAYER)) {
-                move_character(tile, character->x, character->y, new_x, new_y);
+                move_character(character->x, character->y, new_x, new_y);
                 character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
             }
             //reverse direction
@@ -354,7 +359,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 character->y_direction *= -1;
                 int new_x = character->x + character->x_direction;
                 int new_y = character->y + character->y_direction;
-                move_character(tile, character->x, character->y, new_x, new_y);
+                move_character(character->x, character->y, new_x, new_y);
             }
             //no direction yet
             else {
@@ -391,7 +396,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                     character->x_direction = x;
                     character->y_direction = y;
                     character->direction_set = 1;
-                    move_character(tile, character->x, character->y, new_x, new_y);
+                    move_character(character->x, character->y, new_x, new_y);
                     character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
                 }
                 else {
@@ -406,7 +411,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                 && tile->tile[new_y][new_x].terrain.id == tile->tile[character->y][character->x].terrain.id
                 && (tile->tile[new_y][new_x].character == NULL
                 || (tile->tile[new_y][new_x].character->type_enum == PLAYER && character->defeated == 0))) {
-                move_character(tile, character->x, character->y, new_x, new_y);
+                move_character(character->x, character->y, new_x, new_y);
                 character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
             }
             else {
@@ -443,7 +448,7 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
                     character->x_direction = x;
                     character->y_direction = y;
                     character->direction_set = 1;
-                    move_character(tile, character->x, character->y, new_x, new_y);
+                    move_character(character->x, character->y, new_x, new_y);
                     character->turn += tile->tile[new_y][new_x].terrain.rival_weight;
                 }
                 else {
@@ -462,8 +467,9 @@ int turn_based_movement(struct tile *tile, struct heap *turn_heap) {
 
 }
 
-int player_turn(struct tile *tile, struct character *player_character, struct heap *turn_heap) {
+int player_turn(struct character *player_character, struct heap *turn_heap) {
 
+    struct tile *tile = world[current_tile_y][current_tile_x];
     int turn_completed = 0;
     int in_help = 0;
     int x = player_character->x;
@@ -678,7 +684,6 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                     }
                 }
                 else if (command == KEY_DOWN) {
-                    //todo: BUG TEST: test scroll down
                     if (position < num_trainers - SCREEN_HEIGHT + 1) {
                         position += SCREEN_HEIGHT - 1;
                         clear();
@@ -905,7 +910,7 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                         player_character->y = 1;
                     }
                     //updates map with new PC coordinates
-                    //todo: ASSIGNED: current tile defined globally by x and y (on world) defined globally and world already defined
+                    //todo: ASSIGNED: current tile change mid function when applicable
                     //todo: ASSIGNED: update tile pc info
                     //todo: ASSIGNED: make new heap for this tile (attach heap to tile)
                     //todo: ASSIGNED: refactor dijkstra distance tiles
@@ -920,7 +925,7 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
                 }
             }
             else {
-                move_character(tile, x, y, new_x, new_y);
+                move_character(x, y, new_x, new_y);
                 player_character->turn += tile->tile[new_y][new_x].terrain.pc_weight;
                 //recreate distance tiles for new PC location
                 dijkstra(tile, RIVAL);
@@ -933,8 +938,9 @@ int player_turn(struct tile *tile, struct character *player_character, struct he
 
 }
 
-int move_character(struct tile *tile, int x, int y, int new_x, int new_y) {
+int move_character(int x, int y, int new_x, int new_y) {
 
+    struct tile *tile = world[current_tile_y][current_tile_x];
     struct character *from_character = tile->tile[y][x].character;
     struct character *to_character = tile->tile[new_y][new_x].character;
     //if moving onto PC
