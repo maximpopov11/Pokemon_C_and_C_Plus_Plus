@@ -106,11 +106,11 @@ static int32_t comparator_character_movement(const void *key, const void *with) 
 int print_usage();
 int initialize_terminal();
 int turn_based_movement(struct heap *turn_heap);
-int player_turn(struct character *player_character, struct heap *turn_heap);
+int player_turn(struct heap *turn_heap);
 int move_character(int x, int y, int new_x, int new_y);
 int combat(struct character *from_character, struct character *to_character);
-int enter_center(struct character *player_character);
-int enter_mart(struct character *player_character);
+int enter_center();
+int enter_mart();
 int interaction(struct heap *turn_heap);
 int change_tile(int x, int y, struct heap *turn_heap);
 struct tile create_tile(int x, int y, struct heap *turn_heap);
@@ -138,6 +138,7 @@ int print_tile_trainer_distances_printer(struct tile *tile);
 struct tile *world[WORLD_LENGTH_Y][WORLD_WIDTH_X] = {0};
 int current_tile_x;
 int current_tile_y;
+struct character *player_character;
 int num_trainers;
 
 int main(int argc, char *argv[]) {
@@ -177,6 +178,7 @@ int main(int argc, char *argv[]) {
     current_tile_x = WORLD_CENTER_X;
     current_tile_y = WORLD_CENTER_Y;
     world[WORLD_CENTER_Y][WORLD_CENTER_X] = &home_tile;
+    place_player_character(world[current_tile_y][current_tile_x], &turn_heap);
     turn_based_movement(&turn_heap);
     endwin();
     return 0;
@@ -213,7 +215,7 @@ int turn_based_movement(struct heap *turn_heap) {
             addstr("It's your turn! Enter a command or press z for help!\n");
             print_tile_terrain(tile);
             refresh();
-             if (player_turn(character, turn_heap) == 1) {
+             if (player_turn(turn_heap) == 1) {
                  return 1;
              }
         }
@@ -467,7 +469,7 @@ int turn_based_movement(struct heap *turn_heap) {
 
 }
 
-int player_turn(struct character *player_character, struct heap *turn_heap) {
+int player_turn(struct heap *turn_heap) {
 
     struct tile *tile = world[current_tile_y][current_tile_x];
     int turn_completed = 0;
@@ -910,7 +912,8 @@ int player_turn(struct character *player_character, struct heap *turn_heap) {
                         player_character->y = 1;
                     }
                     //updates map with new PC coordinates
-                    //todo: ASSIGNED: current tile change mid function when applicable
+                    //todo: ASSIGNED: globalize PC
+                    //todo: ASSIGNED: return specific value to signal end turn based movement (FOR SPECIFIC TILE) then main calls it for new tile!
                     //todo: ASSIGNED: update tile pc info
                     //todo: ASSIGNED: make new heap for this tile (attach heap to tile)
                     //todo: ASSIGNED: refactor dijkstra distance tiles
@@ -1212,7 +1215,6 @@ struct tile create_tile(int x, int y, struct heap *turn_heap) {
     }
     generate_paths(&tile, north_x, south_x, east_y, west_y);
     generate_buildings(&tile, x, y);
-    place_player_character(&tile, turn_heap);
     place_trainers(&tile, turn_heap);
     return tile;
 
@@ -1721,7 +1723,7 @@ int place_player_character(struct tile *tile, struct heap *turn_heap) {
         }
     }
 
-    struct character *player_character = malloc(sizeof(struct character));
+    player_character = malloc(sizeof(struct character));
     player_character->x = x;
     player_character->y = y;
     player_character->type_enum = PLAYER;
